@@ -45,7 +45,7 @@ def parseFile(content, filename):
         try:
             message = extractMessage(node)
         except AttributeError:
-            print "Warning: Unparsable Message, see log file for details"
+            print "Warning: Unparsable message, see log file for details"
             logger.warn(node.toxml())
         sender = extractSender(node)
         if message != '' and sender != '':
@@ -62,6 +62,7 @@ def scanDirectory(path):
     return content
 
 def analyze(content):
+    # ----------- 1 --------------
     # content looks like
     # [(1, "John", "hey how are you"),
     #  (2, "Tim", "fine and you?"),
@@ -71,26 +72,40 @@ def analyze(content):
     # {'John':{'hello': 1, 'I':10, 'am':5}}
     # -----------
     usedwords = {}
-    for entry in content:
-        for word in entry[2].split(' '):
-            if entry[1] not in usedwords:
-                usedwords[entry[1]] = {}
-            if word not in usedwords[entry[1]]:
-                usedwords[entry[1]][word] = 0
-            usedwords[entry[1]][word] += 1
+    for line in content:
+        for word in line[2].split(' '):
+            if line[1] not in usedwords:
+                usedwords[line[1]] = {}
+            if word not in usedwords[line[1]]:
+                usedwords[line[1]][word] = 0
+            usedwords[line[1]][word] += 1
     # sort
     # before {'John':{'hello': 1, 'I':10, 'am':5}}
-    for entry in usedwords:
-        usedwords[entry] = sorted(usedwords[entry].iteritems(), key=operator.itemgetter(1), reverse=True)
+    for line in usedwords:
+        usedwords[line] = sorted(usedwords[line].iteritems(), key=operator.itemgetter(1), reverse=True)
     # after {'John':[('I', 10), ('am', 5), (hello', 1)]}
-    # -----------
+
+    # ----------- 2 --------------
     # determine total word count
     totalwords = 0
     for sender in usedwords:
         for word, count in usedwords[sender]:
             totalwords += count
 
-    return (usedwords, totalwords)
+    # ----------- 3 --------------
+    # determine average message length
+    averages = {}
+    maxima = {}
+    for line in content:
+        wordcount = len(line[2].split(' '))
+        if line[1] not in averages:
+            averages[line[1]] = wordcount
+        averages[line[1]] += wordcount
+        averages[line[1]] /= 2.0 
+        if (line[1] not in maxima) or (wordcount > maxima[line[1]][0]):
+            maxima[line[1]] = (wordcount, line[2])
+    
+    return (usedwords, totalwords, averages, maxima)
 
 def printResults(results):
     for sender in results[0]:
@@ -103,6 +118,14 @@ def printResults(results):
             i += 1
         print
 
+    for sender in results[2]:
+        print "Average message length for: " + sender + ": " + str(results[2][sender])
+    print
+    for sender in results[3]:
+        print "Maximum message length for: " + sender + ": " + str(results[3][sender][0]) + " with:"
+        print results[3][sender][1]
+        print 
+    print
     print "Total words spoken: " + str(results[1])
 
 # -----------------------------------------------
