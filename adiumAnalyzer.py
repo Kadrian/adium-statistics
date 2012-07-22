@@ -3,7 +3,7 @@
 
 from xml.dom.minidom import parse
 from xml.parsers.expat import ExpatError
-import sys, os, codecs, operator
+import sys, os, operator
 
 # inizialize logging
 import logging
@@ -26,18 +26,20 @@ def extractSender(node):
     return alias
 
 def parseFile(content, filename):
+    """append (id, sender, message) to content and return it again"""
     global id
-    # open file and start to read lines
-    #f = codecs.open(filename, "r", encoding="utf-8")
+    # parse file
     f = open(filename, 'r')
     dom = None
     try:
         dom = parse(f)
     except ExpatError:
-        print "Warning: Unparsable file: " + filename
+        print "Warning: Unparsable file, see log file for details"
+        logger.warn("Could not parse file: " + filename)
         return content
     f.close()
     nodes = dom.getElementsByTagName('message')
+    # scan all message nodes
     for node in nodes:
         message = ''
         try:
@@ -50,12 +52,6 @@ def parseFile(content, filename):
             content.append((id, sender, message))
             id+=1
     return content
-
-def determineInputPath():
-    pathFrom = "."
-    if len(sys.argv) > 1:
-        pathFrom = sys.argv[1]
-    return pathFrom
 
 def scanDirectory(path):
     content = []
@@ -72,7 +68,7 @@ def analyze(content):
     #  (3, "John", "i'm fine too!"),]
     # -----------
     # create a dictionary that looks like
-    # {'John':{'hello': 18, 'I':10, 'am':5}}
+    # {'John':{'hello': 1, 'I':10, 'am':5}}
     # -----------
     usedwords = {}
     for entry in content:
@@ -82,10 +78,13 @@ def analyze(content):
             if word not in usedwords[entry[1]]:
                 usedwords[entry[1]][word] = 0
             usedwords[entry[1]][word] += 1
-    #sort
+    # sort
+    # before {'John':{'hello': 1, 'I':10, 'am':5}}
     for entry in usedwords:
         usedwords[entry] = sorted(usedwords[entry].iteritems(), key=operator.itemgetter(1), reverse=True)
-
+    # after {'John':[('I', 10), ('am', 5), (hello', 1)]}
+    # -----------
+    # determine total word count
     totalwords = 0
     for sender in usedwords:
         for word, count in usedwords[sender]:
@@ -93,7 +92,6 @@ def analyze(content):
 
     return (usedwords, totalwords)
 
-#print
 def printResults(results):
     for sender in results[0]:
         print "Top 10 Words for: " + sender
@@ -103,14 +101,18 @@ def printResults(results):
                 break
             print word + " : "+ str(value)
             i += 1
+        print
 
     print "Total words spoken: " + str(results[1])
 
 # -----------------------------------------------
 # ---------------- Main Program -----------------
 # -----------------------------------------------
+if len(sys.argv) != 2:
+    print "Please supply the path to the adium logs, see readme on github for details"
+    sys.exit()
 
-path = determineInputPath()
+path = sys.argv[1] 
 content = scanDirectory(path)
 result = analyze(content)
 printResults(result)
