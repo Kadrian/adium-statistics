@@ -1,5 +1,5 @@
 #adiumAnalyzer
-Builds statistics from your Adium conversation history
+Builds statistics from your Adium chat history
 # Usage
     python adiumAnalyzer.py path
 
