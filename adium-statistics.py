@@ -62,12 +62,13 @@ def scanDirectory(path):
     return content
 
 def analyze(content):
-    # ----------- 1 --------------
     # content looks like
     # [(1, "John", "hey how are you"),
     #  (2, "Tim", "fine and you?"),
     #  (3, "John", "i'm fine too!"),]
-    # -----------
+
+    # ----------- 1 --------------
+    # determine words used and count them per chat partner
     # create a dictionary that looks like
     # {'John':{'hello': 1, 'I':10, 'am':5}}
     # -----------
@@ -92,8 +93,8 @@ def analyze(content):
         for word, count in usedwords[sender]:
             totalwords += count
 
-    # ----------- 3 --------------
-    # determine average message length
+    # ----------- 3 + 4 ----------
+    # determine average + maximum message length per chat partner
     averages = {}
     maxima = {}
     for line in content:
@@ -104,8 +105,26 @@ def analyze(content):
         averages[line[1]] /= 2.0 
         if (line[1] not in maxima) or (wordcount > maxima[line[1]][0]):
             maxima[line[1]] = (wordcount, line[2])
-    
-    return (usedwords, totalwords, averages, maxima)
+
+    # ----------- 5 + 6 ----------
+    # determine average + maximum number of consecutive messages per chat partner
+    consecutiveAvgs = {}
+    consecutiveMaxs = {}
+    counter = 0
+    lastAuthor = content[0][1]
+    for line in content:
+        counter += 1
+        if lastAuthor != line[1]:
+            if line[1] not in consecutiveAvgs:
+                consecutiveAvgs[line[1]] = counter
+            consecutiveAvgs[line[1]] += counter 
+            consecutiveAvgs[line[1]] /= 2.0
+            lastAuthor = line[1]
+            if (line[1] not in consecutiveMaxs) or (counter > consecutiveMaxs[line[1]]):
+                consecutiveMaxs[line[1]] = counter
+            counter = 0
+
+    return (usedwords, totalwords, averages, maxima, consecutiveAvgs, consecutiveMaxs)
 
 def printResults(results):
     for sender in results[0]:
@@ -124,7 +143,11 @@ def printResults(results):
     for sender in results[3]:
         print "Maximum message length for: " + sender + ": " + str(results[3][sender][0]) + " with:"
         print results[3][sender][1]
-        print 
+    for sender in results[4]:
+        print "Average number of consecutive messages written for " + sender + ": " + str(results[4][sender])
+    for sender in results[5]:
+        print "Maximum number of consecutive messages written for " + sender + ": " + str(results[5][sender])
+
     print
     print "Total words spoken: " + str(results[1])
 
@@ -135,7 +158,7 @@ if len(sys.argv) != 2:
     print "Please supply the path to the adium logs, see readme on github for details"
     sys.exit()
 
-path = sys.argv[1] 
+path = sys.argv[1]
 content = scanDirectory(path)
 result = analyze(content)
 printResults(result)
