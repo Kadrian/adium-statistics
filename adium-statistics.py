@@ -4,6 +4,7 @@
 from xml.dom.minidom import parse
 from xml.parsers.expat import ExpatError
 import sys, os, operator
+import math
 
 # inizialize logging
 import logging
@@ -93,7 +94,23 @@ def analyze(content):
         for word, count in usedwords[sender]:
             totalwords += count
 
-    # ----------- 3 + 4 ----------
+    # ----------- 3 --------------
+    # determine interesting words
+    interestingwords = {}
+    for sender in usedwords:
+        word, count = usedwords[sender][0]
+        onepercent = math.ceil(count / 1000.0)
+        counter = 0
+        for w, c in reversed(usedwords[sender]):
+            if c >= onepercent:
+                if sender not in interestingwords:
+                    interestingwords[sender] = []
+                interestingwords[sender].append(w)
+                counter += 1
+            if counter >= 5:
+                break
+
+    # ----------- 4 + 5 ----------
     # determine average + maximum message length per chat partner
     averages = {}
     maxima = {}
@@ -106,7 +123,7 @@ def analyze(content):
         if (line[1] not in maxima) or (wordcount > maxima[line[1]][0]):
             maxima[line[1]] = (wordcount, line[2])
 
-    # ----------- 5 + 6 ----------
+    # ----------- 6 + 7 ----------
     # determine average + maximum number of consecutive messages per chat partner
     consecutiveAvgs = {}
     consecutiveMaxs = {}
@@ -124,7 +141,7 @@ def analyze(content):
                 consecutiveMaxs[line[1]] = counter
             counter = 0
 
-    return (usedwords, totalwords, averages, maxima, consecutiveAvgs, consecutiveMaxs)
+    return (usedwords, totalwords, averages, maxima, consecutiveAvgs, consecutiveMaxs, interestingwords)
 
 def printResults(results):
     for sender in results[0]:
@@ -135,6 +152,12 @@ def printResults(results):
                 break
             print word + " : "+ str(value)
             i += 1
+        print
+
+    for sender in results[6]:
+        print "Interesting words for: " + sender
+        for word in results[6][sender]:
+            print word
         print
 
     for sender in results[2]:
